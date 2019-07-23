@@ -22,9 +22,14 @@ def debug_data_generation(func):
     """Check the dimension of the generated the data structures
     """
     x = np.array([[1,1,1,1,1], [0,1,0, -1, 1]])
-    y = np.array([6, 0])
+    y = np.array([0.6, 0.0])
+    x = x.astype(np.float)
+    y = y.astype(np.float)
+
+    x = torch.from_numpy(x)
+    y = torch.from_numpy(y)
     
-    if np.sum(np.power(func(x) - y,2)):
+    if torch.sum((func(x) - y).pow(2)):
         print('error occurs x and y, func(x)', x, y, func(x))
 
     return None
@@ -56,8 +61,8 @@ def debug_data_comination(func, tran_num, test_num):
     return None
 
 if __name__ == '__main__':
-    debug_data_generation(dg._generate_y_data)
-    x_train, x_test = dg._generate_x_data(10, 5, 5)
+    debug_data_generation(dg.generate_y_data)
+    x_train, x_test = dg.generate_x_data(10, 5, 5)
     _check_x_shape(x_train,x_test)
 
 

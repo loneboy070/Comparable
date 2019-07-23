@@ -11,14 +11,13 @@ import os
 import copy as cp
 
 
-a = np.ones(5)
+x = torch.tensor([2., 2], requires_grad=True)
+y = x**2 + x
+z = y.sum()
+z.backward()
+print(x.grad)
+with torch.no_grad():
+    x = x+1
 
-a = np.arange(24).reshape(4,6).astype(np.float)
-b = torch.from_numpy(a)
-print('b',b)
-print('dim = 0',torch.mean(b, dim = 0))
-print('dim = 1',torch.mean(b, dim = 1))
-
-
-print('dim = 0', np.mean(a, axis= 0))
-print('dim = 1', np.mean(a, axis= 1))
+z.backward()
+print(x.grad)

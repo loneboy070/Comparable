@@ -23,15 +23,31 @@ class EquiNetwork(torch.nn.Module):
         """
         super(EquiNetwork, self).__init__()
 
-        self.layers_s = self._generate_layers(Node_Sizes, bias=True)
-        self.layers_g = self._generate_layers(Node_Sizes, bias=True)
+        self.Node_Sizes = Node_Sizes
+        Node_Sizes_s = cp.deepcopy(Node_Sizes)
+        Node_Sizes_g = cp.deepcopy(Node_Sizes)
+        self.SUBNODE = args.SUBNODE
+
+        print('Node_Sizes',Node_Sizes)
+        if args.ENN:
+            for i in range(len(Node_Sizes)):
+                if i>0 and i < len(Node_Sizes)-1:
+                    Node_Sizes_s[i] -= self.SUBNODE
+                    Node_Sizes_g[i] = self.SUBNODE
+
+        print('Node_Sizes_s',Node_Sizes_s)
+        print('Node_Sizes_g',Node_Sizes_g)
+
+
+        self.layers_s = self._generate_layers(Node_Sizes_s, bias=True)
+        self.layers_g = self._generate_layers(Node_Sizes_g, bias=True)
         self.batchnorms = self._generate_batch_norms(Node_Sizes)
         self.dropout = self._generate_dropout()
         # print('Node_Sizes', Node_Sizes)
 
         self.parameters = nn.ModuleList(self.layers_g + self.layers_s)
         self.Node_Sizes = args.Node_Sizes
-
+        # print(self.SUBNODE)
         return None
 
     def _generate_dropout(self):
@@ -45,7 +61,7 @@ class EquiNetwork(torch.nn.Module):
         """
         layers = [None for _ in range(len(Node_Sizes)-1)]
         for i in range(len(Node_Sizes)-1):
-            layers[i] = nn.Linear(Node_Sizes[i], Node_Sizes[i+1], bias = bias)
+            layers[i] = nn.Linear(self.Node_Sizes[i], Node_Sizes[i+1], bias = bias)
             # self.batchnorms[i] = nn.BatchNorm1d(Node_Sizes[i])
         return layers
 
@@ -67,10 +83,11 @@ class EquiNetwork(torch.nn.Module):
         if not, separate network
         """
         layer = init_layer
-        M=3
 
         for i in range(len(self.Node_Sizes)-1):
             prev_layer = layer
+            # print('prev_layer',prev_layer)
+
             layer = self.layers_s[i](prev_layer)
             # print('prev_layer first',prev_layer)
 
@@ -78,18 +95,15 @@ class EquiNetwork(torch.nn.Module):
 
             if i != len(self.Node_Sizes)-2:
                 if args.ENN:
-                    layer[:,:M] = 0
+                    layer_g = -torch.mul(self.layers_g[i](prev_layer),1/(args.N_ITEM))
 
-                    layer[:,:M] += self.layers_g[i](torch.mean(prev_layer, dim=0))[:M]
+                    layer_g += self.layers_g[i](torch.mean(prev_layer, dim=0))
+                    
+                    layer = torch.cat([layer,layer_g], dim=1)
 
-                    layer[:,:M] -= torch.mul(self.layers_g[i](prev_layer),1/args.N_ITEM)[:,:M]
-
-                # layer = self.batchnorms[i+1](layer)
                 
                 layer = layer.clamp(min=0)
-                # print('layer after relu',layer)
-
-                # print('layer at after batchnorm',i,layer)
+ 
 
         return layer
 

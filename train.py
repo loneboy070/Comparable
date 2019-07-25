@@ -11,9 +11,9 @@ import os
 import copy as cp
 
 import data_generator as dg
-# from neural_network import EquiNetwork
+# from neural_network1 import EquiNetwork
 # from neural_network2 import EquiNetwork
-from neural_network3 import EquiNetwork
+from neural_network import EquiNetwork
 
 
 import config
@@ -39,7 +39,7 @@ class Train():
         self.FEATURE_DIM = args.FEATURE_DIM
         self.Node_Sizes = args.Node_Sizes
         self.N_ITEM = args.N_ITEM
-        self.STEPS = args.STEPS
+        self.ITERATIONS = args.ITERATIONS
         self.LOSS_PRINT = args.LOSS_PRINT
         self.TEST_LOSS_PRINT = args.TEST_LOSS_PRINT
         self.TEST_BATCH = args.TEST_BATCH
@@ -52,48 +52,30 @@ class Train():
         self.x_train, self.x_test = dg.generate_x_data(self.N_TRAIN, self.N_TEST, self.FEATURE_DIM)
         self.y_train, self.y_test = dg.generate_y_data(self.x_train), dg.generate_y_data(self.x_test)
 
-        # print('self.x_train',self.x_train)
-        # print('self.x_test',self.x_test)
-        # print('self.y_train',self.y_train)
-        # print('self.y_test',self.y_test)
-        
-        # self.y_train += 0.2 * torch.randn(size=self.y_train.size())
-
         return None
-
 
     def generate_model(self):
         """Design the model for pytorch
         """
         self.model = EquiNetwork(self.Node_Sizes)
-
         self.criterion = torch.nn.MSELoss(reduction='mean')
-        # self.criterion = torch.nn.MSELoss(reduction='sum')
-
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.0001)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=args.LR)
 
         return None
 
-
-    def _backpropagation(self):
-        """Learning the neural network with prorper sizes of batches for a step
+    def _backpropagation(self, batch):
+        """Learning the neural network with prorper sizes of batch for a step
         """
         self.model.train()
         # self.model.eval()
 
         # 순전파 단계: 모델에 x를 전달하여 예상하는 y 값을 계산합니다.
-        batches = np.random.choice(self.N_TRAIN, size=self.N_ITEM, replace=False)
-        x_train = self.x_train[batches]
-        y_train = self.y_train[batches].view([-1, 1])
-
+        # batch = np.random.choice(self.N_TRAIN, size=self.N_ITEM, replace=False)
+        x_train = self.x_train[batch]
+        y_train = self.y_train[batch].view([-1, 1])
         y_pred = self.model(x_train)
 
         loss = self.criterion(y_pred, y_train)
-        # print('x_train',x_train)
-        # print('y_pred', y_pred)
-        # print('y_train', y_train)
-        # print('loss', loss)
-        # exit(0)
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -102,6 +84,21 @@ class Train():
         new_pred = self.model(x_train)
 
         return loss.item()
+
+    def _get_batches(self):
+        """Generate the batches with ENNSIZE * N_TRAIN/ENNSIZE
+        Some samples may duplicated 
+        """
+        raw_string = np.arange(self.N_TRAIN)
+
+        raw_string = np.append(raw_string, np.random.choice(raw_string,size=(self.N_TRAIN%self.N_ITEM),replace=False))
+        # raw_string.append()
+
+        np.random.shuffle(raw_string)
+        batches = np.reshape(raw_string, [self.N_ITEM, -1])
+        
+        return batches
+
 
     def _testing(self):
         """Test the neural network with nongiven samples.
@@ -112,7 +109,6 @@ class Train():
 
         mix_pred_mat = torch.zeros(self.N_TEST)
         mix_accuracy_mat = torch.zeros(self.N_TEST)
-
 
         for mix_batch in range(self.TEST_BATCH):
 
@@ -125,46 +121,36 @@ class Train():
                 x_test = self.x_test[[test_index]]
                 y_test = self.y_test[[test_index]]
 
-
                 x_mix = torch.cat((x_train, x_test))
                 y_mix = torch.cat((y_train, y_test))
                 y_mix = y_mix.view([-1,1])
 
                 y_mix_pred = self.model(x_mix)
-                # print('y_mix_pred',y_mix_pred)
-                # print('mix_pred_mat[test_index]', mix_pred_mat)
-                # if test_index == 0:
-                #     print('x_test', x_test)
-                    # print('predict result', y_mix_pred[-1].item())
-                # error_train = self.criterion(y_mix_pred[:-1],y_train.view(y_mix_pred[:-1].size()))
-                
-                # error_ratio = torch.exp(-error_train)
+       
                 error_ratio = 1
                 mix_accuracy_mat[test_index] += error_ratio
 
                 mix_pred_mat[test_index] += error_ratio * y_mix_pred[-1].item()
-        
-        # # mix_pred_mat = mix_pred_mat/self.TEST_BATCH
-        # print('mix_accuracy_mat',mix_accuracy_mat)
-        # mix_pred_mat = torch.mul(mix_pred_mat, mix_accuracy_mat.pow(-1))
+
         mix_pred_mat = mix_pred_mat/self.TEST_BATCH
 
         test_loss = self.criterion(self.y_test.view(mix_pred_mat.size()), mix_pred_mat).item()
 
-        # test_loss = test_loss_sum/self.N_TEST 
-        
         return test_loss
-
 
     def training(self):
         path='./saved_model/weight'
         """ Traing the neural network during iterations.
         """
-        path+='STEPS_'+str(self.STEPS)+'ENN_'+str(args.ENN)+'train_'+str(self.N_TRAIN)+"ITEM_"+str(self.N_ITEM)+'BATCH_'+str(self.TEST_BATCH)+'SEED_'+str(args.SEED_DATA)
+        path+='_ITERATIONS_'+str(self.ITERATIONS)+'_ENN_'+str(args.ENN)+'_train_'+str(self.N_TRAIN)+"_ITEM_"+str(self.N_ITEM)+'_BATCH_'+str(self.TEST_BATCH)+'_SEED_'+str(args.SEED_DATA)
         path+='.pkl'
-        train_loss = 0 
-        for t in range(self.STEPS):
-            train_loss += self._backpropagation()
+        train_loss = 0
+
+        for t in range(self.ITERATIONS):
+            batches = self._get_batches()
+            for batch in batches:
+                train_loss += self._backpropagation(batch)
+
             if t % self.LOSS_PRINT == 0 and t>0:
                 # print('                                               Training loss for iteration t:', t, train_loss/np.float(self.LOSS_PRINT))
                 result_str = 'Training loss for iteration t: ' +str(t) + "   "+str(train_loss/np.float(self.LOSS_PRINT))
@@ -177,8 +163,6 @@ class Train():
                 print(result_str)
 
         torch.save(self.model.state_dict(), path)
-
-
 
         return None
 

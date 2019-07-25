@@ -12,6 +12,8 @@ import copy as cp
 
 import data_generator as dg
 from neural_network import EquiNetwork
+# from neural_network2 import EquiNetwork
+
 
 import config
 args = config.parser.parse_args()
@@ -49,6 +51,13 @@ class Train():
         self.x_train, self.x_test = dg.generate_x_data(self.N_TRAIN, self.N_TEST, self.FEATURE_DIM)
         self.y_train, self.y_test = dg.generate_y_data(self.x_train), dg.generate_y_data(self.x_test)
 
+        # print('self.x_train',self.x_train)
+        # print('self.x_test',self.x_test)
+        # print('self.y_train',self.y_train)
+        # print('self.y_test',self.y_test)
+        
+        # self.y_train += 0.2 * torch.randn(size=self.y_train.size())
+
         return None
 
 
@@ -60,7 +69,7 @@ class Train():
         self.criterion = torch.nn.MSELoss(reduction='mean')
         # self.criterion = torch.nn.MSELoss(reduction='sum')
 
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.0003)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.0001)
 
         return None
 
@@ -68,7 +77,7 @@ class Train():
     def _backpropagation(self):
         """Learning the neural network with prorper sizes of batches for a step
         """
-        # self.model.train()
+        self.model.train()
         # self.model.eval()
 
         # 순전파 단계: 모델에 x를 전달하여 예상하는 y 값을 계산합니다.
@@ -162,7 +171,7 @@ class Train():
 
                 if self.TEST_LOSS_PRINT:
                     test_loss = self._testing()
-                    result_str += '      Test loss for iteration t:' + str(t) + "  "+ str(test_loss)
+                    result_str += '      Test loss for iteration t:' + str(int(t/1000)) + "  "+ str(test_loss)
 
                 print(result_str)
 

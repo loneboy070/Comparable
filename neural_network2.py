@@ -23,22 +23,18 @@ class EquiNetwork(torch.nn.Module):
         """
         super(EquiNetwork, self).__init__()
 
-        self.layers_s = self._generate_layers(Node_Sizes, bias=True)
-        self.layers_g = self._generate_layers(Node_Sizes, bias=True)
+        # self.layers_s = self._generate_layers(Node_Sizes, bias=True)
+        self.layers_g = self._generate_layers(Node_Sizes, bias=False)
+        self.biases, self.zero_vectors = self._generate_biases(Node_Sizes)
         self.batchnorms = self._generate_batch_norms(Node_Sizes)
-        self.dropout = self._generate_dropout()
         # print('Node_Sizes', Node_Sizes)
 
-        self.parameters = nn.ModuleList(self.layers_g + self.layers_s)
+        # self.parameters = nn.ModuleList(self.layers_g + self.layers_s)
+        self.parameters = nn.ModuleList(self.layers_g + self.biases)
+
         self.Node_Sizes = args.Node_Sizes
 
         return None
-
-    def _generate_dropout(self):
-        """Generate the dropout function
-        """
-        dropout = nn.Dropout(p=args.DROPOUT)
-        return dropout
 
     def _generate_layers(self, Node_Sizes, bias = True):
         """Generate layers
@@ -50,11 +46,24 @@ class EquiNetwork(torch.nn.Module):
         return layers
 
 
+
+    def _generate_biases(self, Node_Sizes):
+        """Generate layers
+        """
+        biases = [None for _ in range(len(Node_Sizes)-1)]
+        zero_vectors = [None for _ in range(len(Node_Sizes)-1)]
+        for i in range(len(Node_Sizes)-1):
+            biases[i] = nn.Linear(Node_Sizes[i], Node_Sizes[i+1], bias = True)
+            # self.batchnorms[i] = nn.BatchNorm1d(Node_Sizes[i])
+            zero_vectors[i] = torch.zeros([1, Node_Sizes[i]])
+        return biases, zero_vectors
+
+
     def _generate_batch_norms(self,  Node_Sizes):
         """Generate batch norm parameters
         """
-        batchnorms = [None for _ in range(len(Node_Sizes))]
-        for i in range(len(Node_Sizes)):
+        batchnorms = [None for _ in range(len(Node_Sizes)-1)]
+        for i in range(len(Node_Sizes)-1):
             batchnorms[i] = nn.BatchNorm1d(Node_Sizes[i])
 
         return batchnorms
@@ -67,35 +76,26 @@ class EquiNetwork(torch.nn.Module):
         if not, separate network
         """
         layer = init_layer
-        M=3
-
+        M=10
         for i in range(len(self.Node_Sizes)-1):
             prev_layer = layer
-            layer = self.layers_s[i](prev_layer)
+            layer = self.layers_g[i](prev_layer)
             # print('prev_layer first',prev_layer)
 
-            # print('raw layer',layer)
+            if args.ENN:
+                layer -= self.layers_g[i](torch.mean(prev_layer, dim=0))
+            # print('zero_vectors[i]',self.zero_vectors[i])
+            # print('self.biases[i](self.zero_vectors[i])', self.biases[i](self.zero_vectors[i]))
+            # print('layer before',layer)
 
-            if i != len(self.Node_Sizes)-2:
-                if args.ENN:
-                    layer[:,:M] = 0
-                    # print('layer zeros',layer)
-                    layer2 = self.batchnorms[i+1](layer)
-                    # print('layer2', layer2)
-                    layer[:,:M] += self.layers_g[i](torch.mean(prev_layer, dim=0))[:M]
-                    # print('layer at before relue',i,layer)
-
-
-                layer = layer.clamp(min=0)
-                # print('layer at after relue',i,layer)
-
-                # print('layer before batch norma',layer)
-                # layer3 = self.batchnorms[i+1](layer)
-                # print('layer at after batchnorm',i,layer3)
-
-                # layer = self.dropout(layer)
+            layer += self.biases[i](self.zero_vectors[i])
+            # print('layer',layer)
                 
-            # print('layer at',i,layer)
+            if i != len(self.Node_Sizes)-2:
+                layer = layer.clamp(min=0)
+                # print('layer before batch norma',layer)
+                layer = self.batchnorms[i+1](layer)
+
         return layer
 
     

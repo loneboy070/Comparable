@@ -1,36 +1,41 @@
 #!/bin/bash
-STEPS=10000000
-LOSS_PRINT=20000
+ITERATIONS=10000000
+LOSS_PRINT=400
 N_TRAIN=300
 N_TEST=100
-ENN=false
-TEST_BATCH=100
+ENN=0
+TEST_BATCH=300
 N_ITEM=10
 SEED_DATA=0
-LR=0.0003
+LR=0.0001
 
-for STEPS in 10000000
+for ITERATIONS in 120000
 do
-    for N_TRAIN in 111
+    for SUBNODE in 1 2 3 4
     do
-        for N_ITEM in 2
+        for N_ITEM in 4
         do
             for SEED_DATA in 0
             do
-                for N_TEST in 100
+                for SEED_TRAIN in 0 1 2 3 4
                 do
-                    for ENN in false
+                    for N_TEST in 300
                     do
-                        sleep 3
-                        python train.py --STEPS $STEPS --LOSS_PRINT $LOSS_PRINT --N_TRAIN $N_TRAIN --N_TEST $N_TEST --ENN $ENN --TEST_BATCH $TEST_BATCH --N_ITEM $N_ITEM --SEED_DATA $SEED_DATA --LR $LR &
-                        ret=$?
-                        if [ $ret -ne 0 ]; 
-                        then
-                        #Handle failure
-                        #exit if required
-                            exit 1
-                        fi
+                        for ENN in 1
+                        do
+                            sleep 3
+                            python train.py --ITERATIONS $ITERATIONS --LOSS_PRINT $LOSS_PRINT --N_TRAIN $N_TRAIN --N_TEST $N_TEST --ENN $ENN --TEST_BATCH $TEST_BATCH --N_ITEM $N_ITEM --SEED_DATA $SEED_DATA --LR $LR --SUBNODE $SUBNODE --SEED_TRAIN $SEED_TRAIN &
 
+
+                            ret=$?
+                            if [ $ret -ne 0 ]; 
+                            then
+                            #Handle failure
+                            #exit if required
+                                exit 1
+                            fi
+
+                        done
                     done
                 done
             done

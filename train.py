@@ -11,8 +11,9 @@ import os
 import copy as cp
 
 import data_generator as dg
-from neural_network import EquiNetwork
+# from neural_network import EquiNetwork
 # from neural_network2 import EquiNetwork
+from neural_network3 import EquiNetwork
 
 
 import config

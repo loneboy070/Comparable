@@ -16,7 +16,7 @@ parser.add_argument('--SEED_DATA', required=False, default = 2)
 
 
 parser.add_argument('--Node_Sizes', required=False, default=[5, 10, 10, 1])
-parser.add_argument('--STEPS', required=False, default=10000000)
+parser.add_argument('--STEPS', required=False, default=1000000)
 parser.add_argument('--LOSS_PRINT', required=False, default=10000)
 parser.add_argument('--TEST_LOSS_PRINT', required=False, default=True)
 parser.add_argument('--TEST_BATCH', required=False, default=100)

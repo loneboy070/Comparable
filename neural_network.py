@@ -87,17 +87,20 @@ class EquiNetwork(torch.nn.Module):
                     layer[:,:M] -= torch.mul(self.layers_g[i](prev_layer),1/args.N_ITEM)[:,:M]
                     # print('layer at before relue',i,layer)
 
-
+                # print('layer before relu',layer)
+                
                 layer = layer.clamp(min=0)
-                # print('layer at after relue',i,layer)
 
-                # print('layer before batch norma',layer)
-                # layer3 = self.batchnorms[i+1](layer)
-                # print('layer at after batchnorm',i,layer3)
+                # print('layer after relu',layer)
+
+                layer = self.batchnorms[i+1](layer)
+
+                # print('layer at after batchnorm',i,layer)
 
                 # layer = self.dropout(layer)
                 
             # print('layer at',i,layer)
+            # exit(0)
         return layer
 
     

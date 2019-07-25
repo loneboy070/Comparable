@@ -80,9 +80,11 @@ class EquiNetwork(torch.nn.Module):
                 if args.ENN:
                     layer[:,:M] = 0
                     # print('layer zeros',layer)
-                    layer2 = self.batchnorms[i+1](layer)
+                    # layer2 = self.batchnorms[i+1](layer)
                     # print('layer2', layer2)
                     layer[:,:M] += self.layers_g[i](torch.mean(prev_layer, dim=0))[:M]
+                    # print('torch.mul(self.layers_g[i](prev_layer),1/args.N_ITEM)[:M]',torch.mul(self.layers_g[i](prev_layer),1/args.N_ITEM)[:,:M])
+                    layer[:,:M] -= torch.mul(self.layers_g[i](prev_layer),1/args.N_ITEM)[:,:M]
                     # print('layer at before relue',i,layer)
 
 

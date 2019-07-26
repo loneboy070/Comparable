@@ -101,8 +101,10 @@ class EquiNetwork(torch.nn.Module):
                     
                     layer = torch.cat([layer,layer_g], dim=1)
 
-                
+                # print('layer', layer)
                 layer = layer.clamp(min=0)
+                if args.DROPOUT>0:
+                    layer = self.dropout(layer)
  
 
         return layer

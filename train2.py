@@ -27,7 +27,6 @@ class Train():
         """
         super(Train, self).__init__()
         self._init_parameters()
-        self.generate_path()
         # self.generate_data()
 
         return None
@@ -41,8 +40,6 @@ class Train():
         self.Node_Sizes = args.Node_Sizes
         self.N_ITEM = args.N_ITEM
         self.ITERATIONS = args.ITERATIONS
-        self.START_ITER = args.START_ITER
-        self.END_ITER = args.END_ITER
         self.LOSS_PRINT = args.LOSS_PRINT
         self.TEST_LOSS_PRINT = args.TEST_LOSS_PRINT
         self.TEST_BATCH = args.TEST_BATCH
@@ -62,8 +59,6 @@ class Train():
         """
         self.model = EquiNetwork(self.Node_Sizes)
         self.criterion = torch.nn.MSELoss(reduction='mean')
-        self.criterion_test = torch.nn.MSELoss(reduction='mean')
-        
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=args.LR)
 
         return None
@@ -132,54 +127,52 @@ class Train():
 
                 y_mix_pred = self.model(x_mix)
        
-                error_ratio = 1
-                mix_accuracy_mat[test_index] += error_ratio
 
+                error_ratio = self.criterion(y_mix_pred[:-1].view(y_train.size()), y_train).item()
+                error_ratio = np.exp(- 5 * error_ratio)
+
+                mix_accuracy_mat[test_index] += error_ratio
                 mix_pred_mat[test_index] += error_ratio * y_mix_pred[-1].item()
 
-        mix_pred_mat = mix_pred_mat/self.TEST_BATCH
+        # mix_pred_mat = mix_pred_mat/self.TEST_BATCH
+        # print('mix_accuracy_mat',mix_accuracy_mat)
+        # print('before mix_pred_mat',mix_pred_mat)
 
-        test_loss = self.criterion_test(self.y_test.view(mix_pred_mat.size()), mix_pred_mat).item()
+        mix_pred_mat = torch.mul(mix_pred_mat,mix_accuracy_mat.pow(-1))
+        # print('after mix_pred_mat',mix_pred_mat)
+        # exit(0)
+
+        test_loss = self.criterion(self.y_test.view(mix_pred_mat.size()), mix_pred_mat).item()
 
         return test_loss
 
-    def generate_path(self):
-        """Generate the pathes.
-        """
-        self.weight_path='./saved_model/weight/'
-        self.log_path='./logs/'
-        self.name ='_ITERATIONS_'+str(self.ITERATIONS)+'_train_'+str(self.N_TRAIN)+"_ITEM_"+str(self.N_ITEM)+'_BATCH_'+str(self.TEST_BATCH)+'_ENN_'+str(args.ENN)+'_SUBNODE_'+str(args.SUBNODE)+'_SEED_DATA_'+str(args.SEED_DATA)+'_SEED_TRAIN_'+str(args.SEED_TRAIN)
-        if not (os.path.isdir(self.weight_path)):
-            os.makedirs(os.path.join(self.weight_path))
-        if not (os.path.isdir(self.log_path)):
-            os.makedirs(os.path.join(self.log_path))
-        return None
-
-
     def training(self):
+        path='./saved_model/weight'
         """ Traing the neural network during iterations.
         """
-        # path='./saved_model/weight'
         # path+='_ITERATIONS_'+str(self.ITERATIONS)+'_ENN_'+str(args.ENN)+'_train_'+str(self.N_TRAIN)+"_ITEM_"+str(self.N_ITEM)+'_BATCH_'+str(self.TEST_BATCH)+'_SEED_'+str(args.SEED_DATA)
         # path+='.pkl'
-        if self.START_ITER:
-            # print('ha NODE', args.SUBNODE)
-            # self.model.eval()
-            # print('before, self.model(np.ones(4,5))', self.model(torch.ones([4,5])))
-            self.load_model()            
-            # print('after, self.model(np.ones(4,5))', self.model(torch.ones([4,5])))
-            # exit(0)
 
         time1 = time.time()
 
+
+        weight_path='./saved_model/weight/'
+        log_path='./logs/'
+        name ='_ITERATIONS_'+str(self.ITERATIONS)+'_train_'+str(self.N_TRAIN)+"_ITEM_"+str(self.N_ITEM)+'_BATCH_'+str(self.TEST_BATCH)+'_ENN_'+str(args.ENN)+'_SUBNODE_'+str(args.SUBNODE)+'_SEED_DATA_'+str(args.SEED_DATA)+'_SEED_TRAIN_'+str(args.SEED_TRAIN)
+        if not (os.path.isdir(weight_path)):
+            os.makedirs(os.path.join(weight_path))
+        if not (os.path.isdir(log_path)):
+            os.makedirs(os.path.join(log_path))
+
+
         train_loss = 0
 
-        for t in range(self.START_ITER, self.END_ITER):
+        for t in range(self.ITERATIONS):
             batches = self._get_batches()
             for batch in batches:
                 train_loss += self._backpropagation(batch)
 
-            if t % self.LOSS_PRINT == 0 and t>self.START_ITER:
+            if t % self.LOSS_PRINT == 0 and t>0:
                 # print('                                               Training loss for iteration t:', t, train_loss/np.float(self.LOSS_PRINT))
                 result_str = '\n Training loss for iteration t: ' +str(t) + "   "+str(train_loss/np.float(self.LOSS_PRINT))
                 train_loss = 0
@@ -191,28 +184,17 @@ class Train():
                 print(result_str)
                 
 
-                txtfile = open(self.log_path+self.name+'.txt',"a") 
+                txtfile = open(log_path+name+'.txt',"a") 
                 txtfile.write(result_str)
                 txtfile.close()
 
         # torch.save(self.model.state_dict(), path)
-        torch.save(self.model.state_dict(), self.weight_path+self.name+'.pkl')
+        torch.save(self.model.state_dict(), weight_path+name+'.pkl')
         time2 = time.time()
 
         print("running successfully ends within "+str(time2-time1))
 
         return None
-
-    def load_model(self):
-        """Load the model with the path
-        """
-
-        self.model.load_state_dict(torch.load(self.weight_path+self.name+'.pkl'))
-
-        return None
-
-
-    
 
 if __name__ == '__main__':
     print('args.ENN',args.ENN, type(args.ENN))
